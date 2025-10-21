@@ -6,6 +6,7 @@ import {
 import { useAuth } from '../../contexts/AuthContext';
 import { userService, UpdateProfileRequest } from '../../services/userService';
 import { validateName, validatePhone } from '../../utils/validation';
+import ConfirmModal from './ConfirmModal';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -45,6 +46,12 @@ export default function SettingsModal({ isOpen, onClose, type }: SettingsModalPr
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [currentPassword, setCurrentPassword] = useState('');
+  const [showPasswordConfirmModal, setShowPasswordConfirmModal] = useState(false);
+  const [passwordErrors, setPasswordErrors] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: '',
+  });
 
   useEffect(() => {
     if (isOpen && authUser) {
@@ -244,54 +251,51 @@ export default function SettingsModal({ isOpen, onClose, type }: SettingsModalPr
     }
   };
 
-  const handleChangePassword = async () => {
+  const validatePasswordFields = () => {
+    const errors = {
+      currentPassword: '',
+      newPassword: '',
+      confirmPassword: '',
+    };
+
     if (!currentPassword) {
-      setError('Le mot de passe actuel est requis');
-      setTimeout(() => setError(null), 3000);
-      return;
+      errors.currentPassword = 'Le mot de passe actuel est requis';
     }
 
     if (!newPassword) {
-      setError('Le nouveau mot de passe est requis');
-      setTimeout(() => setError(null), 3000);
-      return;
+      errors.newPassword = 'Le nouveau mot de passe est requis';
+    } else {
+      if (newPassword.length < 8) {
+        errors.newPassword = 'Le mot de passe doit contenir au moins 8 caractères';
+      } else if (!/[A-Z]/.test(newPassword)) {
+        errors.newPassword = 'Le mot de passe doit contenir au moins une majuscule';
+      } else if (!/[a-z]/.test(newPassword)) {
+        errors.newPassword = 'Le mot de passe doit contenir au moins une minuscule';
+      } else if (!/[0-9]/.test(newPassword)) {
+        errors.newPassword = 'Le mot de passe doit contenir au moins un chiffre';
+      } else if (!/[@#$%^&+=!]/.test(newPassword)) {
+        errors.newPassword = 'Le mot de passe doit contenir au moins un caractère spécial';
+      }
     }
 
-    if (newPassword !== confirmPassword) {
-      setError('Les mots de passe ne correspondent pas');
-      setTimeout(() => setError(null), 3000);
-      return;
+    if (!confirmPassword) {
+      errors.confirmPassword = 'Veuillez confirmer le mot de passe';
+    } else if (newPassword !== confirmPassword) {
+      errors.confirmPassword = 'Les mots de passe ne correspondent pas';
     }
 
-    if (newPassword.length < 8) {
-      setError('Le mot de passe doit contenir au moins 8 caractères');
-      setTimeout(() => setError(null), 3000);
-      return;
-    }
+    setPasswordErrors(errors);
+    return !errors.currentPassword && !errors.newPassword && !errors.confirmPassword;
+  };
 
-    if (!/[A-Z]/.test(newPassword)) {
-      setError('Le mot de passe doit contenir au moins une majuscule');
-      setTimeout(() => setError(null), 3000);
-      return;
+  const handlePasswordChangeRequest = () => {
+    if (validatePasswordFields()) {
+      setShowPasswordConfirmModal(true);
     }
+  };
 
-    if (!/[a-z]/.test(newPassword)) {
-      setError('Le mot de passe doit contenir au moins une minuscule');
-      setTimeout(() => setError(null), 3000);
-      return;
-    }
-
-    if (!/[0-9]/.test(newPassword)) {
-      setError('Le mot de passe doit contenir au moins un chiffre');
-      setTimeout(() => setError(null), 3000);
-      return;
-    }
-
-    if (!/[@#$%^&+=!]/.test(newPassword)) {
-      setError('Le mot de passe doit contenir au moins un caractère spécial');
-      setTimeout(() => setError(null), 3000);
-      return;
-    }
+  const handleChangePassword = async () => {
+    setShowPasswordConfirmModal(false);
 
     try {
       setLoading(true);
@@ -301,6 +305,7 @@ export default function SettingsModal({ isOpen, onClose, type }: SettingsModalPr
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
+      setPasswordErrors({ currentPassword: '', newPassword: '', confirmPassword: '' });
       setTimeout(() => setSuccess(null), 3000);
     } catch (err: any) {
       setError(err.message || 'Erreur lors du changement de mot de passe');
@@ -712,10 +717,18 @@ export default function SettingsModal({ isOpen, onClose, type }: SettingsModalPr
             <input
               type="password"
               value={currentPassword}
-              onChange={(e) => setCurrentPassword(e.target.value)}
+              onChange={(e) => {
+                setCurrentPassword(e.target.value);
+                setPasswordErrors(prev => ({ ...prev, currentPassword: '' }));
+              }}
               placeholder="Entrez votre mot de passe actuel"
-              className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white ${
+                passwordErrors.currentPassword ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+              }`}
             />
+            {passwordErrors.currentPassword && (
+              <p className="text-red-500 text-sm mt-1">{passwordErrors.currentPassword}</p>
+            )}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -726,10 +739,18 @@ export default function SettingsModal({ isOpen, onClose, type }: SettingsModalPr
               <input
                 type="password"
                 value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
+                onChange={(e) => {
+                  setNewPassword(e.target.value);
+                  setPasswordErrors(prev => ({ ...prev, newPassword: '' }));
+                }}
                 placeholder="Nouveau mot de passe"
-                className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white ${
+                  passwordErrors.newPassword ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                }`}
               />
+              {passwordErrors.newPassword && (
+                <p className="text-red-500 text-sm mt-1">{passwordErrors.newPassword}</p>
+              )}
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -738,10 +759,18 @@ export default function SettingsModal({ isOpen, onClose, type }: SettingsModalPr
               <input
                 type="password"
                 value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
+                onChange={(e) => {
+                  setConfirmPassword(e.target.value);
+                  setPasswordErrors(prev => ({ ...prev, confirmPassword: '' }));
+                }}
                 placeholder="Confirmez le mot de passe"
-                className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white ${
+                  passwordErrors.confirmPassword ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                }`}
               />
+              {passwordErrors.confirmPassword && (
+                <p className="text-red-500 text-sm mt-1">{passwordErrors.confirmPassword}</p>
+              )}
             </div>
           </div>
 
@@ -767,12 +796,12 @@ export default function SettingsModal({ isOpen, onClose, type }: SettingsModalPr
               Assurez-vous de bien mémoriser votre nouveau mot de passe.
             </p>
             <button
-              onClick={handleChangePassword}
-              disabled={!currentPassword || !newPassword || !confirmPassword || newPassword !== confirmPassword || loading}
+              onClick={handlePasswordChangeRequest}
+              disabled={!currentPassword || !newPassword || !confirmPassword || loading}
               className="bg-red-600 text-white px-6 py-2.5 rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <KeyRound className="h-4 w-4" />
-              <span>{loading ? 'Modification...' : 'Changer le mot de passe'}</span>
+              <span>Changer le mot de passe</span>
             </button>
           </div>
         </div>
@@ -982,7 +1011,15 @@ export default function SettingsModal({ isOpen, onClose, type }: SettingsModalPr
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <>
+      <ConfirmModal
+        isOpen={showPasswordConfirmModal}
+        title="Confirmer le changement de mot de passe"
+        message="Êtes-vous sûr de vouloir changer votre mot de passe ? Après cette action, vous devrez utiliser le nouveau mot de passe pour vous connecter."
+        onConfirm={handleChangePassword}
+        onCancel={() => setShowPasswordConfirmModal(false)}
+      />
+      <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <div className="bg-white dark:bg-gray-800 rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
         <div className="sticky top-0 bg-white dark:bg-gray-800 p-6 border-b border-gray-200 dark:border-gray-700 z-10">
           <div className="flex items-center justify-between">
@@ -1004,5 +1041,6 @@ export default function SettingsModal({ isOpen, onClose, type }: SettingsModalPr
         </div>
       </div>
     </div>
+    </>
   );
 }
