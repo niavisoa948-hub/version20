@@ -17,8 +17,16 @@ export const validatePassword = (password: string): string | null => {
 
 export const validatePhone = (phone: string): string | null => {
   if (!phone) return null;
-  const phoneRegex = /^(\+212|0)[0-9]{9}$/;
-  if (!phoneRegex.test(phone.replace(/\s/g, ''))) return 'Format de téléphone invalide (ex: +212 6XX XXX XXX)';
+  const phoneRegex = /^[3-9]\d{8}$/;
+  if (!phoneRegex.test(phone.replace(/\s/g, ''))) return 'Format de téléphone invalide (9 chiffres après +261, commençant par 3-9)';
+  return null;
+};
+
+export const validateName = (name: string, fieldName: string): string | null => {
+  if (!name) return `${fieldName} est requis`;
+  if (!/^[A-Za-zÀ-ÖØ-öø-ÿ\s'-]+$/.test(name)) return `${fieldName} ne doit contenir que des lettres`;
+  if (name.length < 2) return `${fieldName} doit contenir au moins 2 caractères`;
+  if (name.length > 50) return `${fieldName} ne peut pas dépasser 50 caractères`;
   return null;
 };
 

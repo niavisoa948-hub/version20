@@ -3,6 +3,7 @@ import { X, Save, User, Mail, Phone, Building2 } from 'lucide-react';
 import { encadreurService } from '../../services/encadreurService';
 import { authService } from '../../services/authService';
 import { useApiError } from '../../hooks/useApiError';
+import { validateName, validatePhone, validateEmail } from '../../utils/validation';
 
 interface EncadreurFormModalProps {
   isOpen: boolean;
@@ -19,6 +20,13 @@ export default function EncadreurFormModal({ isOpen, onClose, encadreurId }: Enc
     departement: '',
     specialization: '',
   });
+  const [errors, setErrors] = useState({
+    nom: '',
+    prenom: '',
+    email: '',
+    phone: '',
+    departement: '',
+  });
   const [loading, setLoading] = useState(false);
   const handleApiError = useApiError();
 
@@ -33,6 +41,13 @@ export default function EncadreurFormModal({ isOpen, onClose, encadreurId }: Enc
         phone: '',
         departement: '',
         specialization: '',
+      });
+      setErrors({
+        nom: '',
+        prenom: '',
+        email: '',
+        phone: '',
+        departement: '',
       });
     }
   }, [encadreurId, isOpen]);
@@ -57,8 +72,57 @@ export default function EncadreurFormModal({ isOpen, onClose, encadreurId }: Enc
     }
   };
 
+  const validateField = (name: string, value: string) => {
+    let error = '';
+
+    switch (name) {
+      case 'prenom':
+        error = validateName(value, 'Le prénom') || '';
+        break;
+      case 'nom':
+        error = validateName(value, 'Le nom') || '';
+        break;
+      case 'email':
+        error = validateEmail(value) || '';
+        break;
+      case 'phone':
+        error = validatePhone(value) || '';
+        break;
+      case 'departement':
+        if (!value) error = 'Le département est requis';
+        break;
+    }
+
+    setErrors(prev => ({ ...prev, [name]: error }));
+    return error === '';
+  };
+
+  const handleChange = (name: string, value: string) => {
+    setFormData({ ...formData, [name]: value });
+    validateField(name, value);
+  };
+
+  const validateForm = () => {
+    const fields = ['nom', 'prenom', 'email', 'phone', 'departement'];
+    let isValid = true;
+
+    fields.forEach(field => {
+      const value = formData[field as keyof typeof formData];
+      if (!validateField(field, value)) {
+        isValid = false;
+      }
+    });
+
+    return isValid;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!validateForm()) {
+      return;
+    }
+
     try {
       setLoading(true);
       if (encadreurId) {
@@ -123,10 +187,15 @@ export default function EncadreurFormModal({ isOpen, onClose, encadreurId }: Enc
                     type="text"
                     required
                     value={formData.prenom}
-                    onChange={(e) => setFormData({ ...formData, prenom: e.target.value })}
-                    className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                    onChange={(e) => handleChange('prenom', e.target.value)}
+                    className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white ${
+                      errors.prenom ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                    }`}
                     placeholder="Jean"
                   />
+                  {errors.prenom && (
+                    <p className="text-red-500 text-sm mt-1">{errors.prenom}</p>
+                  )}
                 </div>
               </div>
 
@@ -140,10 +209,15 @@ export default function EncadreurFormModal({ isOpen, onClose, encadreurId }: Enc
                     type="text"
                     required
                     value={formData.nom}
-                    onChange={(e) => setFormData({ ...formData, nom: e.target.value })}
-                    className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                    onChange={(e) => handleChange('nom', e.target.value)}
+                    className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white ${
+                      errors.nom ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                    }`}
                     placeholder="Dupont"
                   />
+                  {errors.nom && (
+                    <p className="text-red-500 text-sm mt-1">{errors.nom}</p>
+                  )}
                 </div>
               </div>
             </div>
@@ -159,10 +233,15 @@ export default function EncadreurFormModal({ isOpen, onClose, encadreurId }: Enc
                   required={!encadreurId}
                   readOnly={!!encadreurId}
                   value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  className={`w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white ${encadreurId ? 'cursor-not-allowed opacity-60' : ''}`}
+                  onChange={(e) => handleChange('email', e.target.value)}
+                  className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white ${
+                    errors.email ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                  } ${encadreurId ? 'cursor-not-allowed opacity-60' : ''}`}
                   placeholder="jean.dupont@company.com"
                 />
+                {errors.email && (
+                  <p className="text-red-500 text-sm mt-1">{errors.email}</p>
+                )}
               </div>
               {encadreurId && (
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
@@ -175,17 +254,28 @@ export default function EncadreurFormModal({ isOpen, onClose, encadreurId }: Enc
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Téléphone *
               </label>
-              <div className="relative">
-                <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+              <div className="flex items-center">
+                <span className="px-3 py-2 border border-r-0 border-gray-300 dark:border-gray-600 rounded-l-lg bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white">
+                  +261
+                </span>
                 <input
                   type="tel"
                   required
                   value={formData.phone}
-                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                  placeholder="+33 6 12 34 56 78"
+                  onChange={(e) => {
+                    const onlyDigits = e.target.value.replace(/\D/g, '');
+                    handleChange('phone', onlyDigits);
+                  }}
+                  maxLength={9}
+                  className={`w-full px-4 py-2 border rounded-r-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white ${
+                    errors.phone ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                  }`}
+                  placeholder="Ex: 321234567"
                 />
               </div>
+              {errors.phone && (
+                <p className="text-red-500 text-sm mt-1">{errors.phone}</p>
+              )}
             </div>
 
             <div>
@@ -197,8 +287,10 @@ export default function EncadreurFormModal({ isOpen, onClose, encadreurId }: Enc
                 <select
                   required
                   value={formData.departement}
-                  onChange={(e) => setFormData({ ...formData, departement: e.target.value })}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  onChange={(e) => handleChange('departement', e.target.value)}
+                  className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white ${
+                    errors.departement ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                  }`}
                 >
                   <option value="">Sélectionner un département</option>
                   <option value="Informatique">Informatique</option>

@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { userService, UpdateProfileRequest } from '../../services/userService';
+import { validateName, validatePhone } from '../../utils/validation';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -30,6 +31,12 @@ export default function SettingsModal({ isOpen, onClose, type }: SettingsModalPr
     email: '',
     dateNaissance: '',
     cvPath: '',
+  });
+
+  const [validationErrors, setValidationErrors] = useState({
+    nom: '',
+    prenom: '',
+    phone: '',
   });
 
   const [avatar, setAvatar] = useState<string>('');
@@ -70,6 +77,19 @@ export default function SettingsModal({ isOpen, onClose, type }: SettingsModalPr
       ...prev,
       [name]: value,
     }));
+
+    let error = '';
+    if (name === 'nom') {
+      error = validateName(value, 'Le nom') || '';
+    } else if (name === 'prenom') {
+      error = validateName(value, 'Le prénom') || '';
+    } else if (name === 'phone') {
+      error = validatePhone(value) || '';
+    }
+
+    if (name === 'nom' || name === 'prenom' || name === 'phone') {
+      setValidationErrors(prev => ({ ...prev, [name]: error }));
+    }
   };
 
   const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -151,6 +171,22 @@ export default function SettingsModal({ isOpen, onClose, type }: SettingsModalPr
   };
 
   const handleSaveProfile = async () => {
+    const nomError = validateName(formData.nom, 'Le nom') || '';
+    const prenomError = validateName(formData.prenom, 'Le prénom') || '';
+    const phoneError = formData.phone ? validatePhone(formData.phone) || '' : '';
+
+    setValidationErrors({
+      nom: nomError,
+      prenom: prenomError,
+      phone: phoneError,
+    });
+
+    if (nomError || prenomError || phoneError) {
+      setError('Veuillez corriger les erreurs dans le formulaire');
+      setTimeout(() => setError(null), 3000);
+      return;
+    }
+
     try {
       setLoading(true);
       setError(null);
@@ -392,8 +428,13 @@ export default function SettingsModal({ isOpen, onClose, type }: SettingsModalPr
                     name="nom"
                     value={formData.nom}
                     onChange={handleInputChange}
-                    className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white transition-all"
+                    className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white transition-all ${
+                      validationErrors.nom ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                    }`}
                   />
+                  {validationErrors.nom && (
+                    <p className="text-red-500 text-sm mt-1">{validationErrors.nom}</p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -404,8 +445,13 @@ export default function SettingsModal({ isOpen, onClose, type }: SettingsModalPr
                     name="prenom"
                     value={formData.prenom}
                     onChange={handleInputChange}
-                    className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white transition-all"
+                    className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white transition-all ${
+                      validationErrors.prenom ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                    }`}
                   />
+                  {validationErrors.prenom && (
+                    <p className="text-red-500 text-sm mt-1">{validationErrors.prenom}</p>
+                  )}
                 </div>
               </div>
 
@@ -443,14 +489,30 @@ export default function SettingsModal({ isOpen, onClose, type }: SettingsModalPr
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Téléphone
                   </label>
-                  <input
-                    type="tel"
-                    name="phone"
-                    value={formData.phone}
-                    onChange={handleInputChange}
-                    placeholder="+212 6XX XXX XXX"
-                    className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white transition-all"
-                  />
+                  <div className="flex items-center">
+                    <span className="px-3 py-2.5 border border-r-0 border-gray-300 dark:border-gray-600 rounded-l-lg bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white">
+                      +261
+                    </span>
+                    <input
+                      type="tel"
+                      name="phone"
+                      value={formData.phone}
+                      onChange={(e) => {
+                        const onlyDigits = e.target.value.replace(/\D/g, '');
+                        handleInputChange({
+                          target: { name: 'phone', value: onlyDigits }
+                        } as any);
+                      }}
+                      maxLength={9}
+                      placeholder="Ex: 321234567"
+                      className={`w-full px-4 py-2.5 border rounded-r-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white transition-all ${
+                        validationErrors.phone ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                      }`}
+                    />
+                  </div>
+                  {validationErrors.phone && (
+                    <p className="text-red-500 text-sm mt-1">{validationErrors.phone}</p>
+                  )}
                 </div>
               </div>
 
