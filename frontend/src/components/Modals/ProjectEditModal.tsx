@@ -4,6 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { encadreurService } from '../../services/encadreurService';
 import { internService, InternDTO } from '../../services/internService';
 import { projectService, ProjectDTO, UpdateProjectRequest } from '../../services/projectService';
+import { validateRequired, validateDateRange } from '../../utils/validation';
 
 interface ProjectEditModalProps {
   project: ProjectDTO | null;
@@ -23,6 +24,12 @@ export default function ProjectEditModal({ project, isOpen, onClose, onSuccess }
     status: 'PLANNING' as 'PLANNING' | 'IN_PROGRESS' | 'COMPLETED' | 'ON_HOLD' | 'CANCELLED',
     progress: 0,
     assignedInterns: [] as number[]
+  });
+  const [errors, setErrors] = useState({
+    title: '',
+    description: '',
+    startDate: '',
+    endDate: '',
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -64,12 +71,37 @@ export default function ProjectEditModal({ project, isOpen, onClose, onSuccess }
     }
   }, [project, isOpen, isAdmin, isEncadreur]);
 
+  const validateForm = () => {
+    const newErrors = {
+      title: validateRequired(formData.title, 'Le titre') || '',
+      description: validateRequired(formData.description, 'La description') || '',
+      startDate: validateRequired(formData.startDate, 'La date de début') || '',
+      endDate: validateRequired(formData.endDate, 'La date de fin') || '',
+    };
+
+    if (!newErrors.startDate && !newErrors.endDate) {
+      const dateError = validateDateRange(formData.startDate, formData.endDate);
+      if (dateError) {
+        newErrors.endDate = dateError;
+      }
+    }
+
+    setErrors(newErrors);
+    return !Object.values(newErrors).some(err => err !== '');
+  };
+
+  const handleChange = (field: string, value: any) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+    if (errors[field as keyof typeof errors] !== undefined) {
+      setErrors(prev => ({ ...prev, [field]: '' }));
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
-    if (!formData.title || !formData.description || !formData.startDate || !formData.endDate) {
-      setError('Veuillez remplir tous les champs obligatoires');
+    if (!validateForm()) {
       return;
     }
 
@@ -129,21 +161,31 @@ export default function ProjectEditModal({ project, isOpen, onClose, onSuccess }
             <input
               type="text"
               value={formData.title}
-              onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              onChange={(e) => handleChange('title', e.target.value)}
+              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white ${
+                errors.title ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+              }`}
               placeholder="Ex: Application mobile e-commerce"
             />
+            {errors.title && (
+              <p className="text-red-500 text-sm mt-1">{errors.title}</p>
+            )}
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Description *</label>
             <textarea
               value={formData.description}
-              onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+              onChange={(e) => handleChange('description', e.target.value)}
               rows={4}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white ${
+                errors.description ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+              }`}
               placeholder="Décrivez les objectifs et fonctionnalités du projet..."
             />
+            {errors.description && (
+              <p className="text-red-500 text-sm mt-1">{errors.description}</p>
+            )}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -155,9 +197,14 @@ export default function ProjectEditModal({ project, isOpen, onClose, onSuccess }
               <input
                 type="date"
                 value={formData.startDate}
-                onChange={(e) => setFormData(prev => ({ ...prev, startDate: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                onChange={(e) => handleChange('startDate', e.target.value)}
+                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white ${
+                  errors.startDate ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                }`}
               />
+              {errors.startDate && (
+                <p className="text-red-500 text-sm mt-1">{errors.startDate}</p>
+              )}
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -167,9 +214,14 @@ export default function ProjectEditModal({ project, isOpen, onClose, onSuccess }
               <input
                 type="date"
                 value={formData.endDate}
-                onChange={(e) => setFormData(prev => ({ ...prev, endDate: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                onChange={(e) => handleChange('endDate', e.target.value)}
+                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white ${
+                  errors.endDate ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                }`}
               />
+              {errors.endDate && (
+                <p className="text-red-500 text-sm mt-1">{errors.endDate}</p>
+              )}
             </div>
           </div>
 

@@ -4,6 +4,7 @@ import { InternDTO, internService, UpdateInternRequest } from '../../services/in
 import { encadreurService } from '../../services/encadreurService';
 import { useApiError } from '../../hooks/useApiError';
 import { useAuth } from '../../contexts/AuthContext';
+import { validatePhone, validateDateRange } from '../../utils/validation';
 
 interface InternDetailModalProps {
   intern: InternDTO | null;
@@ -15,6 +16,11 @@ interface InternDetailModalProps {
 export default function InternDetailModal({ intern, isOpen, onClose, onUpdate }: InternDetailModalProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editData, setEditData] = useState<UpdateInternRequest>({});
+  const [errors, setErrors] = useState({
+    phone: '',
+    startDate: '',
+    endDate: '',
+  });
   const [encadreurs, setEncadreurs] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const handleApiError = useApiError();
@@ -58,13 +64,47 @@ export default function InternDetailModal({ intern, isOpen, onClose, onUpdate }:
     }
   };
 
+  const validateEditForm = () => {
+    const newErrors = {
+      phone: '',
+      startDate: '',
+      endDate: '',
+    };
+
+    if (editData.phone) {
+      newErrors.phone = validatePhone(editData.phone) || '';
+    }
+
+    if (editData.startDate && editData.endDate) {
+      const dateError = validateDateRange(editData.startDate, editData.endDate);
+      if (dateError) {
+        newErrors.endDate = dateError;
+      }
+    }
+
+    setErrors(newErrors);
+    return !Object.values(newErrors).some(err => err !== '');
+  };
+
+  const handleChange = (field: string, value: any) => {
+    setEditData({ ...editData, [field]: value });
+    if (errors[field as keyof typeof errors] !== undefined) {
+      setErrors(prev => ({ ...prev, [field]: '' }));
+    }
+  };
+
   const handleSave = async () => {
     if (!intern) return;
+
+    if (!validateEditForm()) {
+      return;
+    }
 
     try {
       setLoading(true);
       await internService.updateIntern(intern.id, editData);
       setIsEditing(false);
+      setErrors({ phone: '', startDate: '', endDate: '' });
       if (onUpdate) onUpdate();
       onClose();
     } catch (error: any) {
@@ -233,12 +273,27 @@ export default function InternDetailModal({ intern, isOpen, onClose, onUpdate }:
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Téléphone
                   </label>
-                  <input
-                    type="tel"
-                    value={editData.phone || ''}
-                    onChange={(e) => setEditData({ ...editData, phone: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                  />
+                  <div className="flex items-center">
+                    <span className="px-3 py-2 border border-r-0 border-gray-300 dark:border-gray-600 rounded-l-lg bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white">
+                      +261
+                    </span>
+                    <input
+                      type="tel"
+                      value={editData.phone || ''}
+                      onChange={(e) => {
+                        const onlyDigits = e.target.value.replace(/\D/g, '');
+                        handleChange('phone', onlyDigits);
+                      }}
+                      maxLength={9}
+                      className={`w-full px-3 py-2 border rounded-r-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white ${
+                        errors.phone ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                      }`}
+                      placeholder="Ex: 321234567"
+                    />
+                  </div>
+                  {errors.phone && (
+                    <p className="text-red-500 text-sm mt-1">{errors.phone}</p>
+                  )}
                 </div>
 
                 <div>
@@ -292,9 +347,14 @@ export default function InternDetailModal({ intern, isOpen, onClose, onUpdate }:
                     <input
                       type="date"
                       value={editData.startDate || ''}
-                      onChange={(e) => setEditData({ ...editData, startDate: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                      onChange={(e) => handleChange('startDate', e.target.value)}
+                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white ${
+                        errors.startDate ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                      }`}
                     />
+                    {errors.startDate && (
+                      <p className="text-red-500 text-sm mt-1">{errors.startDate}</p>
+                    )}
                   </div>
 
                   <div>
@@ -304,9 +364,14 @@ export default function InternDetailModal({ intern, isOpen, onClose, onUpdate }:
                     <input
                       type="date"
                       value={editData.endDate || ''}
-                      onChange={(e) => setEditData({ ...editData, endDate: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                      onChange={(e) => handleChange('endDate', e.target.value)}
+                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white ${
+                        errors.endDate ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                      }`}
                     />
+                    {errors.endDate && (
+                      <p className="text-red-500 text-sm mt-1">{errors.endDate}</p>
+                    )}
                   </div>
                 </div>
               </div>

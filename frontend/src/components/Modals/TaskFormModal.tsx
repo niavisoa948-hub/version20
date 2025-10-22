@@ -5,6 +5,7 @@ import { projectService, ProjectDTO } from '../../services/projectService';
 import { encadreurService } from '../../services/encadreurService';
 import { internService, InternDTO } from '../../services/internService';
 import { CreateTaskRequest } from '../../services/taskService';
+import { validateRequired } from '../../utils/validation';
 
 interface TaskFormModalProps {
   isOpen: boolean;
@@ -22,6 +23,10 @@ export default function TaskFormModal({ isOpen, onClose, onSubmit, projectId }: 
     dueDate: ''
   });
 
+  const [errors, setErrors] = useState({
+    title: '',
+    dueDate: '',
+  });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [projectData, setProjectData] = useState<ProjectDTO | null>(null);
@@ -44,20 +49,32 @@ export default function TaskFormModal({ isOpen, onClose, onSubmit, projectId }: 
 
   if (!isOpen) return null;
 
+  const validateForm = () => {
+    const newErrors = {
+      title: validateRequired(formData.title, 'Le titre') || '',
+      dueDate: validateRequired(formData.dueDate, 'La date d\'échéance') || '',
+    };
+
+    setErrors(newErrors);
+    return !Object.values(newErrors).some(err => err !== '');
+  };
+
+  const handleChange = (field: string, value: any) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+    if (errors[field as keyof typeof errors] !== undefined) {
+      setErrors(prev => ({ ...prev, [field]: '' }));
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
-    if (!formData.title) {
-      setError('Le titre de la tâche est requis');
+    if (!validateForm()) {
       return;
     }
     if (!projectId) {
       setError('Aucun projet sélectionné');
-      return;
-    }
-    if (!formData.dueDate) {
-      setError('Veuillez sélectionner une date d\'échéance');
       return;
     }
   
@@ -114,10 +131,15 @@ export default function TaskFormModal({ isOpen, onClose, onSubmit, projectId }: 
             <input
               type="text"
               value={formData.title}
-              onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              onChange={(e) => handleChange('title', e.target.value)}
+              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white ${
+                errors.title ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+              }`}
               placeholder="Ex: Créer la page de connexion"
             />
+            {errors.title && (
+              <p className="text-red-500 text-sm mt-1">{errors.title}</p>
+            )}
           </div>
 
           <div>
@@ -167,9 +189,14 @@ export default function TaskFormModal({ isOpen, onClose, onSubmit, projectId }: 
               <input
                 type="date"
                 value={formData.dueDate}
-                onChange={(e) => setFormData(prev => ({ ...prev, dueDate: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                onChange={(e) => handleChange('dueDate', e.target.value)}
+                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white ${
+                  errors.dueDate ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                }`}
               />
+              {errors.dueDate && (
+                <p className="text-red-500 text-sm mt-1">{errors.dueDate}</p>
+              )}
             </div>
           </div>
 
